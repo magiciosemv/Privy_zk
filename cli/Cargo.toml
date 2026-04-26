@@ -1,0 +1,22 @@
+[package]
+name = "privy-cli"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Privy SVM CLI - developer toolchain"
+
+[[bin]]
+name = "privy"
+path = "src/main.rs"
+
+[dependencies]
+privy-svm = { path = "../sdk/privy-svm" }
+clap = { workspace = true }
+solana-sdk = { workspace = true }
+solana-client = { workspace = true }
+solana-program = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+hex = { workspace = true }

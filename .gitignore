@@ -1,0 +1,43 @@
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+
+# Anchor
+.anchor/
+
+# Solana
+test-ledger/
+*.keypair
+*.json
+
+# Node
+node_modules/
+dist/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.so
+*.wasm
+privy-geyser/
+geyser-plugin/
+
+# Rust ICE crash reports
+rustc-ice-*
+*_log*.txt
+test_*.txt
