@@ -21,12 +21,13 @@ solana-sdk = "=1.18.26"
 solana-client = "=1.18.26"
 borsh = "1.5"
 borsh-derive = "1.5"
-ark-bn254 = "0.4"
-ark-groth16 = "0.4"
-ark-ec = "0.4"
-ark-ff = "0.4"
-ark-std = "0.4"
-ark-serialize = "0.4"
+ark-bn254 = { version = "0.4", default-features = false }
+ark-groth16 = { version = "0.4", default-features = false }
+ark-ec = { version = "0.4", default-features = false, features = ["std"] }
+ark-ff = { version = "0.4", default-features = false, features = ["std"] }
+ark-std = { version = "0.4", default-features = false, features = ["std"] }
+ark-serialize = { version = "0.4", default-features = false }
+ark-crypto-primitives = { version = "0.4", default-features = false, features = ["std"] }
 light-poseidon = "0.2"
 sha2 = "0.10"
 rand = "0.8"
@@ -41,3 +42,5 @@ base64 = "0.22"
 
 [profile.release]
 overflow-checks = true
+codegen-units = 1
+lto = "thin"

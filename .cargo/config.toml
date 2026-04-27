@@ -1,0 +1,13 @@
+# Solana SBF target configuration
+# Prevents rayon thread-local storage section names from exceeding 16-byte limit
+
+[target.sbf-solana-solana]
+rustflags = [
+    "-C", "link-arg=--icf=all",
+]
+
+[unstable]
+build-std = ["std", "panic_abort", "alloc"]
+
+[build]
+rustflags = ["-C", "symbol-mangling-version=v0"]

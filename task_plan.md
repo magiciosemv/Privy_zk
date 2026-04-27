@@ -37,9 +37,10 @@
 - [ ] 交互与动画
 
 ### 阶段 5: 集成测试 & 演示
-- [ ] 端到端流程测试
-- [ ] Solana Devnet 部署
-- [ ] Demo 录制 / 演示脚本
+- [x] 集成测试脚本编写 (2个测试文件)
+- [⚠] Solana Devnet 部署 (SBF工具链版本冲突，verifier.so 构建成功但 ELF 过于复杂)
+- [⚠] 端到端流程测试 (需修复 SBF build 后执行)
+- 产出: `tests/integration.test.ts`, `tests/privy-svm.ts`
 
 ### 阶段 6: 文档
 - [ ] README.md
