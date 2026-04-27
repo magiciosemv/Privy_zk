@@ -33,5 +33,25 @@
 ### 产出文件 (更新)
 - `DESIGN.md` — 完整技术设计文档 (架构/电路/树/验证/路由/SDK/前端/安全/部署/Demo)
 
+### 完成事项 (续)
+- [x] 全部核心代码实现 + 测试 + Git push
+
+### 当前状态
+- 阶段 1 (需求分析) ✅ 完成
+- 阶段 2 (技术设计) ✅ 完成
+- 阶段 3 (核心合约) ✅ 完成
+- 阶段 4 (前端开发) 待开始
+
+### 产出文件 (核心代码)
+- `programs/privy-verifier/src/lib.rs` — 403行 Groth16 验证器 (Anchor)
+- `programs/privy-pstree/src/lib.rs` — 588行 私有状态承诺树 (Anchor)
+- `sdk/privy-svm/src/` — Rust SDK: lib, types, hash, merkle, client
+- `cli/src/main.rs` — 480行 CLI 工具链
+- 测试: pstree 12/12, sdk 全通过, verifier ⚠️ Rust 1.95 ICE
+
+### Git
+- 提交: bd056c3 (22 files, 11479 lines)
+- 推送到: https://github.com/magiciosemv/Privy_zk
+
 ### 下一步
-- 核心合约开发 (ZK 电路编译器原型、Verifier Program、承诺树、WASM SDK)
+- 前端开发 (Next.js + 3个Demo页面)

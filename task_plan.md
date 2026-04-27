@@ -22,11 +22,13 @@
 - [x] 前端架构设计
 - 产出: `DESIGN.md` (11 章节, ~800 行完整技术设计)
 
-### 阶段 3: 核心合约开发
-- [ ] ZK 电路自动编译器原型
-- [ ] Solana Verifier Program 实现
-- [ ] 私有状态承诺树实现
-- [ ] 证明生成 SDK (WASM)
+### 阶段 3: 核心合约开发 ✅
+- [x] Solana Verifier Program 实现 (Groth16 BN254验证,403行)
+- [x] 私有状态承诺树实现 (Poseidon SMT, 588行, 12/12测试通过)
+- [x] Rust SDK crate (PrivyClient, MerkleTree, 类型系统)
+- [x] CLI 工具链 (privy-cli, 7个子命令)
+- [x] 全部编译通过, 单元测试通过
+- 提交: bd056c3, 22 files, 11479行代码
 
 ### 阶段 4: 前端开发
 - [ ] Next.js 项目初始化
