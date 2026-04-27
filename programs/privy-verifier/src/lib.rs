@@ -5,7 +5,7 @@ use ark_groth16::{PreparedVerifyingKey, Proof, VerifyingKey};
 use ark_serialize::CanonicalDeserialize;
 use sha2::{Digest, Sha256};
 
-declare_id!("VfyP111111111111111111111111111111111111111");
+declare_id!("BuiA3HBdZhbsHZDGGVvVeudVGxeMjg2n5uozTWEePTzN");
 
 /// Maximum size of serialized verification key data in bytes.
 /// Covers BN254 Groth16 VK with up to ~55 public inputs.
@@ -106,7 +106,8 @@ fn do_verify_groth16(
         .collect();
 
     // Run the pairing-based verification.
-    let verified = ark_groth16::verify_proof(&pvk, &proof, &inputs)
+    // ark-groth16 0.4 uses the stand-alone verify_proof function
+    let verified = ark_groth16::Groth16::<Bn254>::verify_proof(&pvk, &proof, &inputs)
         .map_err(|_| ErrorCode::ProofVerificationFailed)?;
 
     require!(verified, ErrorCode::ProofVerificationFailed);
@@ -142,21 +143,6 @@ fn hash_public_inputs(inputs: &[[u8; 32]]) -> [u8; 32] {
     hash
 }
 
-/// Scan `remaining_accounts` for a `VerificationKeyAccount` whose `circuit_id`
-/// matches the requested value.
-fn find_vk_from_remaining<'info>(
-    remaining: &[AccountInfo<'info>],
-    circuit_id: &Pubkey,
-) -> Result<Account<'info, VerificationKeyAccount>> {
-    for acc in remaining {
-        let vk = Account::<VerificationKeyAccount>::try_from(acc)?;
-        if vk.circuit_id == *circuit_id {
-            return Ok(vk);
-        }
-    }
-    Err(ErrorCode::VerificationKeyNotFound.into())
-}
-
 // ── Program ────────────────────────────────────────────────────────────────
 
 #[program]
@@ -180,7 +166,7 @@ pub mod privy_verifier {
     /// * `public_inputs` - Array of 32-byte field-element public inputs.
     pub fn verify_groth16(
         ctx: Context<VerifyGroth16>,
-        circuit_id: Pubkey,
+        _circuit_id: Pubkey,
         proof_data: Vec<u8>,
         public_inputs: Vec<[u8; 32]>,
     ) -> Result<()> {
@@ -211,39 +197,32 @@ pub mod privy_verifier {
         Ok(())
     }
 
-    /// Batch-verify multiple Groth16 proofs in a single instruction.
-    ///
-    /// Groups proofs by circuit_id, loads each distinct verification key from
-    /// `remaining_accounts`, and verifies each proof individually. This reduces
-    /// per-transaction overhead versus calling `verify_groth16` N times.
-    ///
-    /// `remaining_accounts` must contain the VerificationKeyAccount PDAs for
-    /// every distinct `circuit_id` appearing in `proofs`.
+    /// Batch-verify multiple Groth16 proofs for the same circuit.
+    /// Uses a single named VK account and verifies N proofs in one transaction.
+    /// This is more efficient than N separate verify_groth16 calls.
     pub fn batch_verify(
         ctx: Context<BatchVerify>,
+        _circuit_id: Pubkey,
         proofs: Vec<BatchProofInput>,
     ) -> Result<()> {
         require!(!proofs.is_empty(), ErrorCode::InvalidProof);
         require!(proofs.len() <= MAX_BATCH_SIZE, ErrorCode::BatchTooLarge);
 
-        let remaining = ctx.remaining_accounts;
+        let vk = &ctx.accounts.verification_key;
+        require!(vk.is_active, ErrorCode::CircuitInactive);
+        require!(vk.proof_type == 0, ErrorCode::InvalidProof);
+
         let clock = Clock::get()?;
-
         let mut verified_count: u64 = 0;
-        for proof_input in &proofs {
-            let vk_account = find_vk_from_remaining(remaining, &proof_input.circuit_id)?;
 
-            require!(vk_account.is_active, ErrorCode::CircuitInactive);
-            require!(vk_account.proof_type == 0, ErrorCode::InvalidProof);
-
-            do_verify_groth16(&vk_account, &proof_input.proof_data, &proof_input.public_inputs)?;
+        for proof_input in proofs.iter() {
+            do_verify_groth16(vk, &proof_input.proof_data, &proof_input.public_inputs)?;
 
             let public_inputs_hash = hash_public_inputs(&proof_input.public_inputs);
-
             emit!(ProofVerified {
-                circuit_id: proof_input.circuit_id,
+                circuit_id: vk.circuit_id,
                 prover: ctx.accounts.prover.key(),
-                proof_type: vk_account.proof_type,
+                proof_type: vk.proof_type,
                 public_inputs_hash,
                 timestamp: clock.unix_timestamp,
             });
@@ -392,6 +371,7 @@ pub struct UpdateAdmin<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(circuit_id: Pubkey)]
 pub struct BatchVerify<'info> {
     #[account(
         mut,
@@ -400,6 +380,12 @@ pub struct BatchVerify<'info> {
     )]
     pub verifier_state: Account<'info, VerifierState>,
 
+    #[account(
+        seeds = [b"vk", circuit_id.as_ref()],
+        bump
+    )]
+    pub verification_key: Account<'info, VerificationKeyAccount>,
+
     #[account(mut)]
     pub prover: Signer<'info>,
 }
@@ -407,7 +393,7 @@ pub struct BatchVerify<'info> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_ff::PrimeField;
+    use ark_ff::{PrimeField, Zero};
 
     #[test]
     fn test_hash_public_inputs_deterministic() {

@@ -5,7 +5,7 @@ use ark_ff::{BigInteger, PrimeField};
 use light_poseidon::{Poseidon, PoseidonHasher};
 use std::convert::TryInto;
 
-declare_id!("3pD8r4QpTbvRtUeQvqrJ7oE8DDHXkB1udmnopPzDrtNg");
+declare_id!("DY2QrWnr4tKX9tMSeYLMajFjTaa33uqkzbkBwHfbNgqS");
 
 const TREE_DEPTH: usize = 256;
 const MAX_TREE_SIZE: u64 = 1_000_000;

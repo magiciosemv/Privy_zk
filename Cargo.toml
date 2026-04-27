@@ -38,3 +38,6 @@ tokio = { version = "1.43", features = ["full"] }
 anyhow = "1.0"
 hex = "0.4"
 base64 = "0.22"
+
+[profile.release]
+overflow-checks = true

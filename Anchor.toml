@@ -1,14 +1,16 @@
+[toolchain]
+
 [features]
-seeds = false
+resolution = true
 skip-lint = false
 
-[programs.localnet]
-privy_verifier = "VfyP111111111111111111111111111111111111111"
-privy_pstree = "3pD8r4QpTbvRtUeQvqrJ7oE8DDHXkB1udmnopPzDrtNg"
-
 [programs.devnet]
-privy_verifier = "VfyP111111111111111111111111111111111111111"
+privy_pstree = "DY2QrWnr4tKX9tMSeYLMajFjTaa33uqkzbkBwHfbNgqS"
+privy_verifier = "BuiA3HBdZhbsHZDGGVvVeudVGxeMjg2n5uozTWEePTzN"
+
+[programs.localnet]
 privy_pstree = "3pD8r4QpTbvRtUeQvqrJ7oE8DDHXkB1udmnopPzDrtNg"
+privy_verifier = "VfyP111111111111111111111111111111111111111"
 
 [registry]
 url = "https://api.apr.dev"
@@ -17,12 +19,11 @@ url = "https://api.apr.dev"
 cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
+[workspace]
+members = ["programs/privy-verifier", "programs/privy-pstree"]
+types = "target/types"
+
 [scripts]
 test = "cargo test-sbf -- --nocapture"
 
-[workspace]
-types = "target/types"
-members = [
-    "programs/privy-verifier",
-    "programs/privy-pstree",
-]
+[hooks]
