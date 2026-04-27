@@ -3051,12 +3051,10 @@ name = "privy-pstree"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
- "ark-bn254",
- "ark-ff",
  "borsh 1.6.1",
  "borsh-derive 1.6.1",
  "hex",
- "light-poseidon",
+ "sha2 0.10.9",
  "solana-program 2.3.0",
  "thiserror 2.0.18",
 ]

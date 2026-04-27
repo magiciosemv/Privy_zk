@@ -1,13 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;
-use ark_bn254::Fr;
-use ark_ff::{BigInteger, PrimeField};
-use light_poseidon::{Poseidon, PoseidonHasher};
+use sha2::{Digest, Sha256};
 use std::convert::TryInto;
 
 declare_id!("DY2QrWnr4tKX9tMSeYLMajFjTaa33uqkzbkBwHfbNgqS");
 
-const TREE_DEPTH: usize = 256;
+const TREE_DEPTH: usize = 20;  // 2^20 leaves (~1M), proof = 640 bytes
 const MAX_TREE_SIZE: u64 = 1_000_000;
 
 // ── Error Codes ────────────────────────────────────────────────────────────
@@ -110,34 +108,35 @@ impl LeafNode {
     pub const LEN: usize = 8 + 8 + 32 + 32 + 8 + 1 + 32;
 }
 
-// ── Poseidon Hash Utilities ────────────────────────────────────────────────
+// ── Hash Utilities ────────────────────────────────────────────────
 
-/// Convert a 32-byte array to a BN254 field element.
-fn bytes_to_fr(bytes: &[u8; 32]) -> Fr {
-    let mut work = *bytes;
-    // Reduce modulo BN254 scalar field order (~2^254).
-    // Masking the top byte ensures the value is < field order.
-    work[31] &= 0x0f;
-    Fr::from_be_bytes_mod_order(&work)
-}
-
-/// Convert a BN254 field element to a 32-byte array.
-fn fr_to_bytes(fr: &Fr) -> [u8; 32] {
-    let raw = fr.into_bigint().to_bytes_be();
+/// SHA-256 hash of two 32-byte inputs → 32-byte output.
+/// Production: swap to light-poseidon with BN254.
+pub fn poseidon_hash_two(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(b"poseidon_sim_");
+    hasher.update(left);
+    hasher.update(right);
+    let result = hasher.finalize();
     let mut out = [0u8; 32];
-    let len = raw.len().min(32);
-    out[32 - len..].copy_from_slice(&raw[..len]);
+    out.copy_from_slice(&result);
     out
 }
 
-/// Poseidon hash of two 32-byte inputs → 32-byte output.
-/// Uses light-poseidon with Circom-compatible parameters (2 input elements).
-pub fn poseidon_hash_two(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
-    let mut poseidon = Poseidon::<Fr>::new_circom(2).unwrap();
-    let left_fr = bytes_to_fr(left);
-    let right_fr = bytes_to_fr(right);
-    let hash_fr = poseidon.hash(&[left_fr, right_fr]).unwrap();
-    fr_to_bytes(&hash_fr)
+/// Precomputed empty leaf hash: poseidon_sim(0, 0).
+fn empty_leaf_hash() -> [u8; 32] {
+    let zero = [0u8; 32];
+    poseidon_hash_two(&zero, &zero)
+}
+
+/// Compute the empty-tree root (all leaves zero) for the Sparse Merkle Tree.
+fn compute_empty_root() -> [u8; 32] {
+    let zero = [0u8; 32];
+    let mut current = poseidon_hash_two(&zero, &zero);
+    for _ in 0..TREE_DEPTH {
+        current = poseidon_hash_two(&current, &current);
+    }
+    current
 }
 
 // ── Merkle Proof Verification ──────────────────────────────────────────────
@@ -184,50 +183,22 @@ pub fn compute_new_root(
     hash
 }
 
-/// Compute the empty-tree root (all leaves zero) for the Sparse Merkle Tree.
-/// This is the root when no leaves have been inserted.
-fn compute_empty_root() -> [u8; 32] {
-    let zero = [0u8; 32];
-    // Starting from the bottom: the "leaf" level empty node.
-    // For a leaf that is all zeros, its hash in the tree is poseidon(0, 0).
-    let mut current = poseidon_hash_two(&zero, &zero);
-    // Walk up 256 levels
-    for _ in 0..TREE_DEPTH {
-        current = poseidon_hash_two(&current, &current);
-    }
-    current
-}
-
-/// Precomputed empty leaf hash: poseidon(0, 0).
-fn empty_leaf_hash() -> [u8; 32] {
-    let zero = [0u8; 32];
-    poseidon_hash_two(&zero, &zero)
-}
-
 // ── Leaf Hash Computation ──────────────────────────────────────────────────
 
+/// SHA-256 leaf hash.
 fn compute_leaf_hash(leaf: &LeafNode) -> [u8; 32] {
-    let mut poseidon = Poseidon::<Fr>::new_circom(4).unwrap();
-
-    let version_bytes = leaf.version.to_le_bytes();
-    let expiry_bytes = leaf.expiry_timestamp.to_le_bytes();
-    let active_byte = if leaf.is_active { 1u8 } else { 0u8 };
-
-    // Pack version + expiry + is_active into one field element
-    let mut meta = [0u8; 32];
-    meta[..8].copy_from_slice(&version_bytes);
-    meta[8..16].copy_from_slice(&expiry_bytes);
-    meta[16] = active_byte;
-
-    let frs = [
-        bytes_to_fr(&leaf.commitment),
-        bytes_to_fr(&leaf.nullifier),
-        bytes_to_fr(&meta),
-        bytes_to_fr(&leaf.owner.to_bytes()),
-    ];
-
-    let hash_fr = poseidon.hash(&frs).unwrap();
-    fr_to_bytes(&hash_fr)
+    let mut hasher = Sha256::new();
+    hasher.update(b"leaf");
+    hasher.update(&leaf.commitment);
+    hasher.update(&leaf.nullifier);
+    hasher.update(&leaf.version.to_le_bytes());
+    hasher.update(&leaf.expiry_timestamp.to_le_bytes());
+    hasher.update(&[leaf.is_active as u8]);
+    hasher.update(&leaf.owner.to_bytes());
+    let result = hasher.finalize();
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&result);
+    out
 }
 
 // ── Program ────────────────────────────────────────────────────────────────
@@ -721,15 +692,4 @@ mod tests {
             owner: Pubkey::new_unique(),
         };
         assert_ne!(compute_leaf_hash(&leaf1), compute_leaf_hash(&leaf2));
-    }
-
-    // Test fr_to_bytes roundtrip
-    #[test]
-    fn test_fr_bytes_roundtrip() {
-        let v = [42u8; 32];
-        let fr = bytes_to_fr(&v);
-        let back = fr_to_bytes(&fr);
-        // After mod reduction, we verify back is same length
-        assert_eq!(back.len(), 32);
-    }
-}
+    }}

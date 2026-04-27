@@ -21,8 +21,6 @@ anchor-lang = { workspace = true }
 solana-program = { workspace = true }
 borsh = { workspace = true }
 borsh-derive = { workspace = true }
-light-poseidon = { workspace = true }
-ark-bn254 = { workspace = true }
-ark-ff = { workspace = true }
 thiserror = { workspace = true }
 hex = { workspace = true }
+sha2 = { workspace = true }

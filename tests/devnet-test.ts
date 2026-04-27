@@ -81,14 +81,16 @@ function findPDA(programId: PublicKey, ...seeds: Buffer[]): [PublicKey, number] 
 }
 
 function simpleHash(a: Buffer, b: Buffer): Buffer {
-  return crypto.createHash("sha256").update(a).update(b).digest();
+  return crypto.createHash("sha256")
+    .update(Buffer.from("poseidon_sim_"))
+    .update(a).update(b).digest();
 }
 
-function generateEmptyProof(depth: number): Buffer[] {
+function generateEmptyProof(depth: number = 20): Buffer[] {
   const proof: Buffer[] = [];
   let node = Buffer.alloc(32, 0);
   for (let i = 0; i < depth; i++) {
-    proof.push(node);
+    proof.push(Buffer.from(node));
     node = simpleHash(node, node);
   }
   return proof;
@@ -162,7 +164,7 @@ async function main() {
   const commitment = Buffer.alloc(32, 0x42); // Fill with 0x42
   const nullifier = Buffer.alloc(32, 0x99);  // Fill with 0x99
   const expiry = new BN(0);
-  const proof = generateEmptyProof(256);
+  const proof = generateEmptyProof(20);  // 20 depth = 640 bytes, fits in 1232B tx
 
   // Build proof as borsh Vec<[u8;32]>
   const proofBytes: number[] = [];
